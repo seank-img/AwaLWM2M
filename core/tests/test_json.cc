@@ -14,6 +14,7 @@
 #include "common/lwm2m_json.c"
 #include "common/lwm2m_tree_node.h"
 #include "common/lwm2m_tree_builder.h"
+#include "client/lwm2m_device_object.h"
 #include "lwm2m_core.h"
 
 class JsonTestSuite : public testing::Test
@@ -24,6 +25,78 @@ class JsonTestSuite : public testing::Test
 protected:
     Lwm2mContextType * context;
 };
+
+
+TEST_F(JsonTestSuite, test_deserialise_single_object_instance)
+{
+    const char * input = (char*)"{\"e\":[\n"
+    "{\"n\":\"11/0\",\"v\":0},\n"
+    "{\"n\":\"16\",\"sv\":\"U\"},\n"
+    "{\"n\":\"0\",\"sv\":\"Imagination Technologies\"},\n"
+    "{\"n\":\"1\",\"sv\":\"Awa Client\"},\n"
+    "{\"n\":\"2\",\"sv\":\"SN12345678\"},\n"
+    "{\"n\":\"3\",\"sv\":\"0.1a\"},\n"
+    "{\"n\":\"6/0\",\"v\":1},\n"
+    "{\"n\":\"6/1\",\"v\":5},\n"
+    "{\"n\":\"7/0\",\"v\":3800},\n"
+    "{\"n\":\"7/1\",\"v\":5000},\n"
+    "{\"n\":\"8/0\",\"v\":125},\n"
+    "{\"n\":\"8/1\",\"v\":900},\n"
+    "{\"n\":\"9\",\"v\":100},\n"
+    "{\"n\":\"10\",\"v\":15},\n"
+    "{\"n\":\"13\",\"v\":2718619435},\n"
+    "{\"n\":\"14\",\"sv\":\"+12:00\"},\n"
+    "{\"n\":\"15\",\"sv\":\"Pacific/Wellington\"},\n"
+    "{\"n\":\"17\",\"sv\":\"AwaClient\"},\n"
+    "{\"n\":\"18\",\"sv\":\"0.0.0.1\"},\n"
+    "{\"n\":\"19\",\"sv\":\"0.0.0.11\"},\n"
+    "{\"n\":\"20\",\"v\":2},\n"
+    "{\"n\":\"21\",\"v\":42}]\n"
+    "}";
+
+    int inputSize = strlen(input) + 1;
+    int objectID = 3;
+    int objectInstanceID = 0;
+
+    Lwm2m_RegisterDeviceObject(context);
+
+    Lwm2mTreeNode * dest;
+    SerdesContext serdesContext;
+    int len = JsonDeserialiseObjectInstance(&serdesContext, &dest, Lwm2mCore_GetDefinitions(context), objectID, objectInstanceID, (const uint8_t *)input, inputSize);
+    EXPECT_EQ(0, len);
+    EXPECT_EQ(19, Lwm2mTreeNode_GetChildCount(dest));
+    Lwm2mTreeNode * child = Lwm2mTreeNode_GetFirstChild(dest);
+    while (child)
+    {
+        int childID;
+        Lwm2mTreeNode_GetID(child, &childID);
+        Lwm2mTreeNode * resourceInstance = Lwm2mTreeNode_GetFirstChild(child);
+        uint16_t valueLength;
+        const uint8_t * value = Lwm2mTreeNode_GetValue(resourceInstance, &valueLength);
+        switch (childID)
+        {
+        case 0:
+            printf("value: %s\n", value);
+            EXPECT_EQ(0, memcmp("Imagination Technologies", (const char *) value, strlen("Imagination Technologies")));
+            break;
+        case 1:
+            EXPECT_EQ(0, memcmp("Awa Client", (const char *) value, strlen("Awa Client")));
+            break;
+        case 13:
+            EXPECT_EQ(0xA20AD72B, *((const uint64_t*)value));
+            break;
+        default:
+            // assume the rest are OK
+            EXPECT_GE(childID, 0);
+            EXPECT_LE(childID, 21);
+            break;
+        }
+
+        child = Lwm2mTreeNode_GetNextChild(dest, child);
+    }
+
+    Lwm2mTreeNode_DeleteRecursive(dest);
+}
 
 TEST_F(JsonTestSuite, test_serialise_string)
 {
@@ -212,5 +285,58 @@ TEST_F(JsonTestSuite, test_serialise_integer)
     EXPECT_EQ(static_cast<int>(strlen(expected)), len) << expected << std::endl << buffer;
     EXPECT_EQ(0, memcmp(buffer, expected, strlen(expected)));
 }
+
+TEST_F(JsonTestSuite, test_serialise_device_object)
+{
+    Lwm2m_SetLogLevel(DebugLevel_Debug);
+
+    Lwm2m_RegisterDeviceObject(context);
+
+
+    uint8_t buffer[1024];
+    memset(buffer, 0, 1024);
+
+    char * expected = (char*)"{\"e\":[\n"
+    "{\"n\":\"11/0\",\"v\":0},\n"
+    "{\"n\":\"16\",\"sv\":\"U\"},\n"
+    "{\"n\":\"0\",\"sv\":\"Imagination Technologies\"},\n"
+    "{\"n\":\"1\",\"sv\":\"Awa Client\"},\n"
+    "{\"n\":\"2\",\"sv\":\"SN12345678\"},\n"
+    "{\"n\":\"3\",\"sv\":\"0.1a\"},\n"
+    "{\"n\":\"6/0\",\"v\":1},\n"
+    "{\"n\":\"6/1\",\"v\":5},\n"
+    "{\"n\":\"7/0\",\"v\":3800},\n"
+    "{\"n\":\"7/1\",\"v\":5000},\n"
+    "{\"n\":\"8/0\",\"v\":125},\n"
+    "{\"n\":\"8/1\",\"v\":900},\n"
+    "{\"n\":\"9\",\"v\":100},\n"
+    "{\"n\":\"10\",\"v\":15},\n"
+    "{\"n\":\"13\",\"v\":2718619435},\n"
+    "{\"n\":\"14\",\"sv\":\"+12:00\"},\n"
+    "{\"n\":\"15\",\"sv\":\"Pacific/Wellington\"},\n"
+    "{\"n\":\"17\",\"sv\":\"AwaClient\"},\n"
+    "{\"n\":\"18\",\"sv\":\"0.0.0.1\"},\n"
+    "{\"n\":\"19\",\"sv\":\"0.0.0.11\"},\n"
+    "{\"n\":\"20\",\"v\":2},\n"
+    "{\"n\":\"21\",\"v\":42}]\n"
+    "}\n";
+
+    Lwm2mTreeNode * dest;
+
+    TreeBuilder_CreateTreeFromObjectInstance(&dest, context, Lwm2mRequestOrigin_Client, 3, 0);
+
+    SerdesContext serdesContext = NULL;
+    int len = JsonSerialiseObjectInstance(&serdesContext, dest, 3, 0, buffer, sizeof(buffer));
+
+    Lwm2mTreeNode_DeleteRecursive(dest);
+
+    printf("%s", &expected[35]);
+
+    EXPECT_EQ(static_cast<int>(strlen(expected)), len) << expected << std::endl << buffer;
+    EXPECT_EQ(0, memcmp(buffer, expected, strlen(expected)));
+}
+
+
+
 
 
