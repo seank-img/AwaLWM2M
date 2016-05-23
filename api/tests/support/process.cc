@@ -157,6 +157,35 @@ pid_t CoAPOperation(const char * coapClientPath, int port, const char * method, 
     return pid;
 }
 
+bool IsUDPPortInUse(int port)
+{
+    bool inUse = true;
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sockfd != -1)
+    {
+        struct sockaddr_in si;
+        memset((char *) &si, 0, sizeof(si));
+        si.sin_family = AF_INET;
+        si.sin_port = htons(port);
+        si.sin_addr.s_addr = htonl(INADDR_ANY);
+        if (bind(sockfd, (const sockaddr *)&si, sizeof(si)) == -1)
+        {
+            //perror("bind");
+            if (errno == EADDRINUSE)
+            {
+                std::cerr << "Port " << port << " is already in use - skipping" << std::endl;
+                inUse = true;
+            }
+        }
+        else
+        {
+            inUse = false;
+        }
+        close(sockfd);
+    }
+    return inUse;
+}
+
 int WaitForIpc(int ipcPort, int timeout /*seconds*/, const char * request, size_t requestLen)
 {
     // repeatedly send a request until a response is received
@@ -203,22 +232,15 @@ int WaitForIpc(int ipcPort, int timeout /*seconds*/, const char * request, size_
     const int maxCount = timeout_us / (tv.tv_sec * 1000000 + tv.tv_usec);
     while (!response && count < maxCount)
     {
-        int rc;
-
-        //printf("count %d\n", count);
-        //printf("Probing for active IPC\n");
-        rc = sendto(sockfd, request, requestLen, 0, (const struct sockaddr *)&fromAddr, fromAddrLen);
+        int rc = sendto(sockfd, request, requestLen, 0, (const struct sockaddr *)&fromAddr, fromAddrLen);
         if (rc == -1)
         {
             perror("sendto failed");
             close(sockfd);
-            //printf("sockfd %d, request %p, requestLen %zu, fromAddr %p, fromAddrLen %d\n", sockfd, request, requestLen, &fromAddr, fromAddrLen);
-            close(sockfd);
             return -1;
         }
 
-        // actual response is not important
-        //printf("Waiting for response\n");
+        // Actual response is not important
         rc = recvfrom(sockfd, &d, sizeof(d), 0, (struct sockaddr *)&theirAddr, &theirAddrLen);
         response = rc == sizeof(d);
         ++count;

@@ -29,7 +29,7 @@ import time
 import ipc
 import overlord
 import config
-import client_low
+import api
 
 g_ConfigurationClass = None  # use default
 
@@ -56,16 +56,17 @@ def _sendRequest(ipcChannel, requestType, responseType, path, value):
 
 def waitForClient(clientID, ipcPort):
     """Block until client endpoint name appears in the list of registered clients on the server."""
-    api = client_low.API("127.0.0.1", ipcPort)
+    server_api = api.ServerAPI("127.0.0.1", ipcPort)
     found = False
     while not found:
         print "waiting"
-        clients = api.GetClientList(clientID)
+        clients = server_api.GetClientList(clientID)
         if len(clients) > 0:
             if clientID in clients:
                 found = True
         if not found:
             time.sleep(0.01)
+    del server_api
 
 class SpawnDaemonsTestCase(unittest.TestCase):
     """TestCase class that spawns LWM2M Server and Client daemons before each test, then kills them afterwards."""
@@ -86,6 +87,7 @@ class SpawnDaemonsTestCase(unittest.TestCase):
                                                             self.config.serverCoapPort,
                                                             self.config.serverLogFile)
 
+            self.addCleanup(self._serverDaemon.terminate)
             self._serverDaemon.spawn()
 
         print "Starting client daemon"
@@ -95,26 +97,16 @@ class SpawnDaemonsTestCase(unittest.TestCase):
                                                             self.config.clientLogFile,
                                                             self.config.clientEndpointName,
                                                             self.config.bootstrapConfigFile)
+            self.addCleanup(self._clientDaemon.terminate)
             self._clientDaemon.spawn()
 
             # wait for client to register with server
             waitForClient(self.config.clientEndpointName, self.config.serverIpcPort)
 
     def tearDown(self):
-        # tearDown functionality moved to doCleanups as it will be called even if the test crashes
+        # tearDown functionality moved to cleanup functions as
+        # they will be called even if setUp raises an exception
         pass
-
-    def doCleanups(self):
-        # kill client first
-        try:
-            self._clientDaemon.terminate()
-        except AttributeError:
-            pass
-
-        try:
-            self._serverDaemon.terminate()
-        except AttributeError:
-            pass
 
     def sendClientRequest(self, requestType, responseType, path, value):
         """Send a client request, using a path tuple of the form: (ObjectID, ObjectInstanceID, ResourceID, ResourceInstanceID)."""

@@ -82,12 +82,10 @@ typedef enum
 
     // 30
     AwaError_RangeInvalid,               /**< Indicates an operation on an invalid array range */
-
-    // 31
     AwaError_StaticClientInvalid,        /**< Indicates an operation was attempted in the context of an invalid Static Client */
     AwaError_StaticClientNotConfigured,  /**< Indicates a Static Client was initialised without being configured */
+    AwaError_StaticClientNotInitialized, /**< Indicates a Static Client was not initialized */
     AwaError_LogLevelInvalid,            /**< Indicates an attempt to set an unknown log level  */
-
 
     AwaError_LAST                        /**< Reserved value */
 } AwaError;
@@ -103,7 +101,7 @@ typedef enum
     AwaLWM2MError_NotFound,             /**< Indicates a LWM2M 4.04 Not Found error was encountered */
     AwaLWM2MError_MethodNotAllowed,     /**< Indicates a LWM2M 4.05 Not Allowed error was encountered */
     AwaLWM2MError_NotAcceptable,        /**< Indicates a LWM2M 4.06 Not Acceptable error was encountered */
-
+    AwaLWM2MError_Timeout,              /**< Indicates a CoAP 5.04 Gateway timeout error was encountered */
     AwaLWM2MError_LAST                  /**< Reserved value */
 } AwaLWM2MError;
 

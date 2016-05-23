@@ -2,6 +2,8 @@
 set (awa_serverd_SOURCES
   lwm2m_server_core.c
   lwm2m_server_xml_handlers.c
+  lwm2m_server_xml_events.c
+  lwm2m_server_xml_registered_entity_tree.c
   lwm2m_object_defs.c
   lwm2m_registration.c
   lwm2m_server.c
@@ -94,5 +96,5 @@ if (ENABLE_GCOV)
 endif ()
 
 install (TARGETS awa_serverd
-  RUNTIME DESTINATION /bin
+  RUNTIME DESTINATION bin
 )
