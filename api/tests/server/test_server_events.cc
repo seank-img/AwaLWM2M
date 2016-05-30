@@ -20,10 +20,11 @@
  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************************************/
 
-#include <gtest/gtest.h>
 #include <vector>
 #include <string>
 #include <algorithm>
+
+#include <gtest/gtest.h>
 
 #include "support/support.h"
 #include "support/static_api_support.h"
@@ -1371,10 +1372,10 @@ TEST_F(TestServerEventsWithConnectedSession, ClientUpdateEvent)
         void callbackHandler(const void * event)
         {
             count ++;
-            AwaServerClientDeregisterEvent * deregisterEvent = (AwaServerClientDeregisterEvent *)event;
-            EXPECT_TRUE(deregisterEvent != NULL);
+            AwaServerClientUpdateEvent * updateEvent = (AwaServerClientUpdateEvent *)event;
+            EXPECT_TRUE(updateEvent != NULL);
 
-            AwaClientIterator * clientIterator = AwaServerClientDeregisterEvent_NewClientIterator(deregisterEvent);
+            AwaClientIterator * clientIterator = AwaServerClientUpdateEvent_NewClientIterator(updateEvent);
             EXPECT_TRUE(clientIterator != NULL);
 
             EXPECT_TRUE(AwaClientIterator_Next(clientIterator));
