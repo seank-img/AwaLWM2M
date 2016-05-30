@@ -15,7 +15,7 @@ ExternalProject_Add(libcoap
     BINARY_DIR     "${CMAKE_BINARY_DIR}/libcoap-build"
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
-    #PATCH_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches ${CMAKE_CURRENT_SOURCE_DIR}/patches
+    PATCH_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches ${CMAKE_CURRENT_SOURCE_DIR}/patches
 )
 
 # for now use a global variable for this until we find a way of setting the property on the libcoap_static target
